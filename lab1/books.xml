@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet type="text/css" href="style.css"?>
+
+<book-list>
+
+  <header>Книжная полка 2024</header>
+
+  <genre type="Фэнтези">
+    <book>
+      <title>Властелин Колец</title>
+      <author>Дж. Р. Р. Толкин</author>
+      <pages>1178</pages>
+      <year>1954</year>
+      <rating data-stars="5">5.0</rating>
+    </book>
+    <book>
+      <title>Гарри Поттер и Дары Смерти</title>
+      <author>Дж. К. Роулинг</author>
+      <pages>640</pages>
+      <year>2007</year>
+      <rating data-stars="4.9">4.9</rating>
+    </book>
+    <book>
+      <title>Игра престолов</title>
+      <author>Джордж Р. Р. Мартин</author>
+      <pages>864</pages>
+      <year>1996</year>
+      <rating data-stars="4.8">4.8</rating>
+    </book>
+    <book>
+      <title>Ведьмак: Последнее желание</title>
+      <author>Анджей Сапковский</author>
+      <pages>384</pages>
+      <year>1993</year>
+      <rating data-stars="4.7">4.7</rating>
+    </book>
+  </genre>
+
+  <genre type="Детектив">
+    <book>
+      <title>Убийство в Восточном экспрессе</title>
+      <author>Агата Кристи</author>
+      <pages>256</pages>
+      <year>1934</year>
+      <rating data-stars="4.6">4.6</rating>
+    </book>
+    <book>
+      <title>Шерлок Холмс: Собака Баскервилей</title>
+      <author>Артур Конан Дойл</author>
+      <pages>272</pages>
+      <year>1902</year>
+      <rating data-stars="4.5">4.5</rating>
+    </book>
+    <book>
+      <title>Десять негритят</title>
+      <author>Агата Кристи</author>
+      <pages>256</pages>
+      <year>1939</year>
+      <rating data-stars="4.7">4.7</rating>
+    </book>
+    <book>
+      <title>Девушка с татуировкой дракона</title>
+      <author>Стиг Ларссон</author>
+      <pages>656</pages>
+      <year>2005</year>
+      <rating data-stars="4.4">4.4</rating>
+    </book>
+  </genre>
+
+  <genre type="Научная фантастика">
+    <book>
+      <title>Дюна</title>
+      <author>Фрэнк Герберт</author>
+      <pages>704</pages>
+      <year>1965</year>
+      <rating data-stars="4.8">4.8</rating>
+    </book>
+    <book>
+      <title>451° по Фаренгейту</title>
+      <author>Рэй Брэдбери</author>
+      <pages>256</pages>
+      <year>1953</year>
+      <rating data-stars="4.7">4.7</rating>
+    </book>
+    <book>
+      <title>Солярис</title>
+      <author>Станислав Лем</author>
+      <pages>288</pages>
+      <year>1961</year>
+      <rating data-stars="4.6">4.6</rating>
+    </book>
+    <book>
+      <title>Основание</title>
+      <author>Айзек Азимов</author>
+      <pages>296</pages>
+      <year>1951</year>
+      <rating data-stars="4.5">4.5</rating>
+    </book>
+  </genre>
+
+</book-list>

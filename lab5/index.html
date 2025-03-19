@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Lab #5</title>
+    <style>
+        body {
+            font-family: Arial;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: #2d3748;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.9);
+            padding: 20px;
+            border-radius: 8px;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        
+        button {
+            background: #2ecc71;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 6px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        button:hover {
+            background: #27ae60;
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+        }
+        
+        input, textarea {
+            width: 95%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 2px solid #d1d5db;
+            border-radius: 8px;
+            background: white;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus {
+            border-color: #2ecc71;
+            outline: none;
+        }
+        
+        .status {
+            padding: 12px;
+            margin: 12px 0;
+            background: #d4f3e0;
+            border: 2px solid #2ecc71;
+            border-radius: 8px;
+            color: #166534;
+        }
+        
+        .result-block {
+            padding: 16px;
+            margin: 16px 0;
+            background: white;
+            border: 2px solid #d4f3e0;
+            border-radius: 8px;
+        }
+        
+        .friend-card {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            margin: 12px 0;
+            background: white;
+            border: 2px solid #d4f3e0;
+            border-radius: 8px;
+        }
+        
+        .friend-photo {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            margin-right: 12px;
+            border: 2px solid #2ecc71;
+        }
+        
+        h2 {
+            color: #166534;
+            font-size: 20px;
+            margin: 18px 0;
+            border-left: 4px solid #2ecc71;
+            padding-left: 12px;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+</head>
+<body>
+<div class="container">
+    <h2>🔑 Авторизация</h2>
+    <input type="text" id="manualToken" placeholder="Введите access token">
+    <button onclick="setToken()">✅ Установить токен</button>
+    <button onclick="authVK()">🔓 Авторизация ВК</button>
+    <div class="status" id="status">📡 Статус: Ожидание авторизации</div>
+
+    <h2>⚙️ Настройки</h2>
+    <input type="number" id="limit" value="5" placeholder="Макс. количество операций">
+
+    <h2>🚀 Функции</h2>
+    <input type="text" id="groupId" placeholder="ID группы">
+    <button onclick="getGroupFriends()">👥 Друзья группы</button>
+    <button onclick="createGroupsPost()">📝 Создать пост</button>
+    <button onclick="findPopularFriend()">🏆 Популярный друг</button>
+    <button onclick="processNewsfeed()">📰 Анализ ленты</button>
+
+    <div class="result-block">
+        <h2>📌 Последний пост</h2>
+        <div id="lastPostContent">⏳ Данные загружаются...</div>
+    </div>
+
+    <div class="result-block">
+        <h2>🌟 Популярный друг</h2>
+        <div id="popularFriendContent">🔄 Загрузка информации</div>
+    </div>
+</div>
+
+<script>
+    const APP_ID = 53162697;
+    let accessToken = null;
+
+    function setToken() {
+        accessToken = document.getElementById('manualToken').value.trim();
+        document.getElementById('status').innerHTML = accessToken 
+            ? 'Токен установлен вручную' 
+            : 'Введите токен в поле выше';
+    }
+
+    function authVK() {
+        const redirectUri = "https://oauth.vk.com/blank.html";
+        const scope = ["wall,friends,groups,stats,offline"];
+        const url = new URL(`https://oauth.vk.com/authorize?client_id=${APP_ID}&display=page&redirect_uri=${redirectUri}&scope=${scope}&response_type=token&v=5.199`);
+        window.open(url.href, 'VK Auth', 'width=600,height=700');
+    }
+
+    function callAPI(method, params) {
+        return $.ajax({
+            url: `https://api.vk.com/method/${method}`,
+            data: {...params, access_token: accessToken, v: '5.199'},
+            dataType: 'jsonp',
+            jsonp: 'callback'
+        });
+    }
+
+    function handleError(error) {
+        alert('Ошибка: ' + (error.error?.error_msg || 'Неизвестная ошибка'));
+    }
+
+    function getGroupFriends() {
+        const groupId = $('#groupId').val();
+        const limit = $('#limit').val();
+
+        callAPI('groups.getMembers', {group_id: groupId, count: 1000})
+            .then(members => {
+                const items = members.response.items.slice(0, limit);
+                let friends = [];
+                
+                function process(index) {
+                    if(index >= items.length) {
+                        alert(`Найдено друзей: ${friends.length}`);
+                        return;
+                    }
+                    
+                    callAPI('friends.get', {user_id: items[index]})
+                        .then(res => {
+                            if(res.response) friends.push(...res.response.items);
+                            return new Promise(r => setTimeout(r, 500));
+                        })
+                        .then(() => process(index + 1))
+                        .catch(handleError);
+                }
+                process(0);
+            })
+            .catch(handleError);
+    }
+
+    function createGroupsPost() {
+        const limit = $('#limit').val();
+        
+        callAPI('groups.get', {extended: 1, count: limit})
+            .then(groups => {
+                let postText = "";
+                const items = groups.response.items;
+
+                function process(index) {
+                    if(index >= items.length) {
+                        return callAPI('wall.post', {message: `Мои группы:\n${postText}`});
+                    }
+
+                    return callAPI('groups.getById', {
+                        group_id: Math.abs(items[index].id),
+                        fields: "members_count"
+                    })
+                        .then(res => {
+                            postText += `${items[index].name} (${res.response.groups[0].members_count} участников)\n`;
+                            return new Promise(r => setTimeout(r, 500));
+                        })
+                        .then(() => process(index + 1));
+                }
+                
+                return process(0);
+            })
+            .then(() => alert('Пост создан!'))
+            .catch(handleError);
+    }
+
+    async function findPopularFriend() {
+	  const limit = $('#limit').val();
+	  
+	  try {
+		const friends = await callAPI('friends.get', {});
+		const items = friends.response.items.slice(0, limit);
+		
+		let maxFriends = 0;
+		let popularUser = null;
+
+		// Последовательно обрабатываем каждого друга
+		for(const item of items) {
+		  const res = await callAPI('users.get', {
+			user_ids: item,
+			fields: 'photo_100,counters'
+		  });
+		  
+		  const user = res.response[0];
+		  if(user.counters?.friends > maxFriends) {
+			maxFriends = user.counters.friends;
+			popularUser = user;
+		  }
+		  await new Promise(r => setTimeout(r, 500)); // Имитация задержки
+		}
+
+		if(popularUser) {
+		  document.getElementById('popularFriendContent').innerHTML = `
+			<div class="friend-card">
+			  <img src="${popularUser.photo_100}" class="friend-photo"
+				   alt="${popularUser.first_name} ${popularUser.last_name}">
+			  <div>
+				<h4>${popularUser.first_name} ${popularUser.last_name}</h4>
+				<p>Друзей: ${maxFriends}</p>
+				<p>Страница: <a href="https://vk.com/id${popularUser.id}" target="_blank">перейти</a></p>
+			  </div>
+			</div>`;
+		}
+	  } catch(error) {
+		handleError(error);
+	  }
+	}
+
+    function processNewsfeed() {
+        callAPI('newsfeed.get', {count: 1})
+            .then(news => {
+                const post = news.response.items[0];
+                let sourceRequest;
+
+                if(post.source_id > 0) {
+                    sourceRequest = callAPI('friends.get', {
+                        user_id: post.source_id,
+                        count: $('#limit').val()
+                    }).then(res => getNames(res.response.items));
+                } else {
+                    sourceRequest = callAPI('groups.getMembers', {
+                        group_id: Math.abs(post.source_id)
+                    }).then(res => getNames(res.response.items));
+                }
+
+                const infoRequest = post.source_id < 0
+                    ? callAPI('groups.getById', {group_id: Math.abs(post.source_id), fields: "photo_100"})
+                    : callAPI('users.get', {user_ids: Math.abs(post.source_id), fields: "photo_100"});
+
+                return Promise.all([sourceRequest, infoRequest, post]);
+            })
+            .then(([names, response, post]) => {
+                const isGroup = post.source_id < 0;
+                const entity = isGroup ? response.response.groups[0] : response.response[0];
+                const attachment = post.attachments?.[0]?.type === "photo" 
+                    ? post.attachments[0].photo.sizes[1].url 
+                    : "";
+
+                document.getElementById('lastPostContent').innerHTML = `
+                    <div class="friend-card">
+                        <img src="${entity.photo_100}" class="friend-photo">
+                        <div style="display: contents;">
+                            <h4>${isGroup ? entity.name : `${entity.first_name} ${entity.last_name}`}</h4>
+                            <p>${new Date(post.date * 1000).toLocaleString()}</p>
+                            <p>${post.text || 'Без текста'}</p>
+                            ${attachment ? `<img src="${attachment}" alt="Прикрепленное фото">` : ''}
+                        </div>
+                    </div>`;
+
+                alert(`Список:\n${names.join('\n')}`);
+            })
+            .catch(handleError);
+    }
+
+    function getNames(ids) {
+        return callAPI('users.get', {
+            user_ids: ids.join(','),
+            fields: 'name'
+        }).then(res => res.response.map(u => `${u.first_name} ${u.last_name}`));
+    }
+</script>
+</body>
+</html>

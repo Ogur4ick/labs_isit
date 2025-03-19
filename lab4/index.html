@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>VK Manager Pro</title>
+  <style>
+    :root {
+  --primary: #4A76A8;
+  --primary-hover: #2F4A6E;
+  --background: #f0f2f5;
+  --surface: #ffffff;
+  --border: #dce1e6;
+  --radius: 12px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+body {
+  background: var(--background);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  margin: 0;
+  padding: 2rem;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2.5rem;
+  display: grid;
+  gap: 2rem;
+}
+
+.auth-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 2rem;
+  display: grid;
+  gap: 1.5rem;
+}
+
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 2rem;
+  align-items: start;
+}
+
+.input-group {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+}
+
+input, textarea {
+  width: 100%;
+  padding: 0.875rem 1.25rem;
+  border: 2px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  transition: all 0.2s ease;
+  background: var(--background);
+  box-sizing: border-box;
+}
+
+textarea {
+  min-height: 140px;
+  resize: vertical;
+}
+
+button {
+  background: var(--primary);
+  color: white;
+  border: none;
+  padding: 0.875rem 1.5rem;
+  border-radius: 8px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+button:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow);
+}
+
+.status {
+  padding: 1rem 1.5rem;
+  background: #e8f3ff;
+  border-radius: 8px;
+  color: var(--primary);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  body {
+    padding: 1rem;
+  }
+  
+  .container {
+    padding: 1.5rem;
+  }
+  
+  .action-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Дополнительные улучшения */
+.button-group {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.like-container {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr auto;
+}
+
+h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1.2rem;
+  color: #1A1A1A;
+}
+
+hr.section-divider {
+  margin: 1.5rem 0;
+  border-color: var(--border);
+}
+  </style>
+  <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+</head>
+<body>
+  <div class="container">
+  <section class="auth-section">
+    <div class="input-group">
+      <h3>🔑 Ручной ввод токена</h3>
+      <input type="text" id="manualToken" placeholder="Введите access token">
+      <div class="button-group">
+        <button onclick="setToken()">Сохранить токен</button>
+        <button onclick="authVK()" style="background: #4AB34A;">
+          🚀 Авторизация ВК
+        </button>
+      </div>
+      <div class="status" id="status">Токен не активирован</div>
+    </div>
+  </section>
+
+  <hr class="section-divider">
+
+  <div class="action-grid">
+    <!-- Блок создания поста -->
+    <div class="input-group">
+      <h3>📝 Новый пост</h3>
+      <input type="number" id="userId" placeholder="Целевой ID (опционально)">
+      <textarea id="postText" placeholder="Текст поста..."></textarea>
+      <div class="button-group">
+        <button onclick="createPost()">📤 Опубликовать</button>
+      </div>
+    </div>
+
+    <!-- Блок комментариев -->
+    <div class="input-group">
+      <h3>💬 Комментарий</h3>
+      <input type="text" id="postId" placeholder="ID поста (owner_id_post_id)">
+      <textarea id="commentText" placeholder="Текст комментария"></textarea>
+      <div class="button-group">
+        <button onclick="addComment()">💡 Отправить</button>
+      </div>
+    </div>
+
+    <!-- Блок лайков -->
+    <div class="input-group">
+      <h3>❤️ Лайк поста</h3>
+      <div class="like-container">
+        <input type="text" id="likePostId" placeholder="ID поста">
+        <button onclick="likePost()">👍 Лайкнуть</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+  <!-- Оригинальный JavaScript без изменений -->
+  <script>
+    const APP_ID = 53162697;
+    let accessToken = null;
+
+    function setToken() {
+      accessToken = document.getElementById('manualToken').value.trim();
+      document.getElementById('status').textContent = accessToken 
+        ? '✅ Токен успешно установлен' 
+        : '⚠️ Введите токен в поле выше';
+    }
+
+
+  function authVK() {
+    const redirectUri = "https://oauth.vk.com/blank.html";
+    const scope = ["wall"];
+    const url = new URL(`https://oauth.vk.com/authorize?client_id=${APP_ID}&display=page&redirect_uri=${redirectUri}&scope=${scope}&response_type=token&v=5.199`);
+    const authWindow = window.open(
+      url.href,
+      'VK Auth',
+      'width=600,height=700'
+    );
+  }
+
+  function callAPI(method, params) {
+    return $.ajax({
+      url: `https://api.vk.com/method/${method}`,
+      data: {
+        ...params,
+        access_token: accessToken,
+        v: '5.199'
+      },
+      dataType: 'jsonp',
+      jsonp: 'callback'
+    });
+  }
+
+  function createPost() {
+    const ownerId = $('#userId').val() || '';
+    const message = $('#postText').val();
+
+    callAPI('wall.post', {
+      owner_id: ownerId,
+      message: message,
+      privacy_view: 'friends'
+    })
+    .done(function(response) {
+      handleResponse(response, 'Пост успешно опубликован');
+    })
+    .fail(function(jqXHR) {
+      handleError(jqXHR);
+    });
+  }
+
+  function addComment() {
+    const [ownerId, postId] = $('#postId').val().split('_');
+    const message = $('#commentText').val();
+
+    callAPI('wall.createComment', {
+      owner_id: ownerId,
+      post_id: postId,
+      message: message
+    })
+    .done(function(response) {
+      handleResponse(response, 'Комментарий добавлен');
+    })
+    .fail(handleError);
+  }
+
+  function likePost() {
+    const [ownerId, postId] = $('#likePostId').val().split('_');
+
+    callAPI('likes.add', {
+      type: 'post',
+      owner_id: ownerId,
+      item_id: postId
+    })
+    .done(function(response) {
+      handleResponse(response, 'Лайк поставлен');
+    })
+    .fail(handleError);
+  }
+
+  function handleResponse(response, successMsg) {
+    if(response.response) {
+      alert(successMsg);
+    } else {
+      alert('Ошибка: ' + (response.error?.error_msg || 'Неизвестная ошибка'));
+    }
+  }
+
+  function handleError(jqXHR) {
+    alert('Ошибка запроса: ' + (jqXHR.responseJSON?.error?.error_msg || 'Ошибка сети'));
+  }
+</script>
+</body>
+</html>

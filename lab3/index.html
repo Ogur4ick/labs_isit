@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Друзья ВКонтакте | Лабораторная 3</title>
+    <style>
+        :root {
+            --primary: #1976d2;
+            --secondary: #f5f5f5;
+            --error: #d32f2f;
+            --text: #212121;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui;
+            line-height: 1.6;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            color: var(--text);
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding-bottom: 1rem;
+            border-bottom: 2px solid var(--primary);
+        }
+
+        .warning {
+            color: var(--error);
+            background: #ffebee;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        input, button {
+            padding: 0.8rem;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+        }
+
+        button {
+            background: var(--primary);
+            color: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: center;
+            border: none;
+        }
+
+        button:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 2rem 0;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: var(--secondary);
+            cursor: pointer;
+            position: relative;
+        }
+
+        th:hover::after {
+            content: '↕';
+            position: absolute;
+            right: 1rem;
+            opacity: 0.5;
+        }
+
+        .status {
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
+        .loading {
+            background: #e3f2fd;
+            color: var(--primary);
+        }
+
+        .error {
+            background: #ffebee;
+            color: var(--error);
+        }
+
+        .success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+
+        .highlight {
+            background-color: #ffeb3b;
+        }
+
+        img.avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <header class="header">
+        <h1>👥 Мои друзья ВКонтакте</h1>
+    </header>
+
+    <div class="controls">
+        <div class="input-group">
+            <input 
+                type="text" 
+                id="userId" 
+                placeholder="User ID"
+            >
+            <input 
+                type="password" 
+                id="accessToken" 
+                placeholder="Access Token"
+            >
+            <button onclick="loadFriends()">
+                <span>🔍 Загрузить друзей</span>
+            </button>
+        </div>
+
+        <div class="input-group">
+            <div class="search-filter" style="display: flex; gap: 8px; flex-wrap: nowrap;">
+            <input 
+                type="text" 
+                id="searchCity" 
+                placeholder="Поиск по городу..."
+                style="flex: 1; min-width: 200px;"
+            >
+            <button 
+                onclick="filterByCity()" 
+                style="min-width: 100px; white-space: nowrap;"
+            >🌆 Фильтр</button>
+            <button 
+                onclick="clearSearch()" 
+                style="min-width: 100px; white-space: nowrap;"
+            >🔄 Сбросить</button>
+        </div>
+            <div class="status" id="status"></div>
+        </div>
+    </div>
+
+    <div id="friends-table"></div>
+    <div class="status" id="counter"></div>
+
+    <script>
+        let friendsData = null;
+        const API_VERSION = '5.131';
+
+        function loadFriends() {
+            const USER_ID = $('#userId').val().trim();
+            const ACCESS_TOKEN = $('#accessToken').val().trim();
+
+            if(!USER_ID || !ACCESS_TOKEN) {
+                showError('Заполните оба поля!');
+                return;
+            }
+
+            showLoading('Идёт загрузка данных...');
+
+            $.ajax({
+                url: 'https://api.vk.com/method/friends.get',
+                dataType: 'jsonp',
+                data: {
+                    user_id: USER_ID,
+                    access_token: ACCESS_TOKEN,
+                    v: API_VERSION,
+                    fields: 'photo_100,bdate,city',
+                    order: 'hints'
+                },
+                success: function(data) {
+                    if(data.error) {
+                        handleVKError(data.error);
+                        return;
+                    }
+
+                    friendsData = data.response.items.map(friend => ({
+                        id: friend.id,
+                        first_name: friend.first_name || 'Не указано',
+                        last_name: friend.last_name || 'Не указано',
+                        bdate: formatDate(friend.bdate),
+                        city: friend.city?.title || 'Не указан',
+                        photo: friend.photo_100
+                    }));
+
+                    renderTable(friendsData);
+                    updateCounter(friendsData.length);
+                    showStatus('Данные успешно загружены!', 'success');
+                },
+                error: function(err) {
+                    showError('Ошибка загрузки: ' + err.statusText);
+                }
+            });
+        }
+
+        function formatDate(bdate) {
+            if (!bdate) return 'Не указана';
+            const parts = bdate.split('.');
+            return parts.length === 2 
+                ? `${parts[0].padStart(2, '0')}.${parts[1].padStart(2, '0')}` 
+                : bdate;
+        }
+
+        function renderTable(items) {
+            const container = $('#friends-table');
+            container.empty();
+
+            if(items.length === 0) {
+                container.html('<div class="status error">Нет данных для отображения</div>');
+                return;
+            }
+
+            const table = $('<table>');
+            const thead = $('<thead>').html(`
+                <tr>
+                    <th onclick="sortTable('id')">ID</th>
+                    <th>Фото</th>
+                    <th onclick="sortTable('first_name')">Имя</th>
+                    <th onclick="sortTable('last_name')">Фамилия</th>
+                    <th onclick="sortTable('bdate')">Дата рождения</th>
+                    <th onclick="sortTable('city')">Город</th>
+                </tr>
+            `);
+
+            const tbody = $('<tbody>');
+            items.forEach(friend => {
+                tbody.append(`
+                    <tr>
+                        <td>${friend.id}</td>
+                        <td><img src="${friend.photo}" class="avatar"></td>
+                        <td>${friend.first_name}</td>
+                        <td>${friend.last_name}</td>
+                        <td>${friend.bdate}</td>
+                        <td>${friend.city}</td>
+                    </tr>
+                `);
+            });
+
+            table.append(thead, tbody);
+            container.append(table);
+            highlightMatches($('#searchCity').val().trim().toLowerCase());
+        }
+
+        function sortTable(field) {
+            if (!friendsData) return;
+            
+            friendsData.sort((a, b) => {
+                const valA = a[field].toLowerCase();
+                const valB = b[field].toLowerCase();
+                return valA.localeCompare(valB);
+            });
+            
+            renderTable(friendsData);
+        }
+
+        function filterByCity() {
+            const searchTerm = $('#searchCity').val().trim().toLowerCase();
+            if (!friendsData) return;
+
+            const filtered = searchTerm 
+                ? friendsData.filter(friend => 
+                    friend.city.toLowerCase().includes(searchTerm)
+                  )
+                : friendsData;
+
+            renderTable(filtered);
+            updateCounter(filtered.length);
+        }
+
+        function clearSearch() {
+            $('#searchCity').val('');
+            renderTable(friendsData);
+            updateCounter(friendsData?.length || 0);
+        }
+
+        function highlightMatches(searchTerm) {
+            $('td:nth-child(6)').each(function() {
+                const city = $(this).text().toLowerCase();
+                $(this).toggleClass('highlight', city.includes(searchTerm));
+            });
+        }
+
+        function updateCounter(count) {
+            $('#counter').text(`Найдено записей: ${count || 0}`);
+        }
+
+        function handleVKError(error) {
+            const errors = {
+                5: 'Неверный access token',
+                6: 'Слишком много запросов',
+                15: 'Доступ запрещён',
+                113: 'Неверный User ID'
+            };
+            showError(errors[error.error_code] || error.error_msg);
+        }
+
+        function showLoading(text) {
+            $('#status').removeClass().addClass('status loading').text(text);
+        }
+
+        function showError(text) {
+            $('#status').removeClass().addClass('status error').text(text);
+            setTimeout(hideStatus, 5000);
+        }
+
+        function showStatus(text, type) {
+            $('#status').removeClass().addClass(`status ${type}`).text(text);
+            setTimeout(hideStatus, 3000);
+        }
+
+        function hideStatus() {
+            $('#status').removeClass().text('');
+        }
+    </script>
+</body>
+</html>

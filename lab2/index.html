@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Умный поиск по книгам</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .controls {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 2rem;
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 20px;
+        }
+        
+        input, select {
+            padding: 12px;
+            border: 2px solid #3498db;
+            border-radius: 8px;
+            font-size: 16px;
+            width: 100%;
+        }
+        
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #2980b9;
+        }
+        
+        .search-type {
+            background: #f8f9fa;
+            border-color: #ced4da !important;
+        }
+        
+        .range-filter {
+            grid-column: 1 / -1;
+            display: none;
+            align-items: center;
+            gap: 15px;
+            margin-top: 10px;
+        }
+        
+        .range-filter.active {
+            display: flex;
+        }
+        
+        .range-inputs {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .range-inputs input {
+            width: 120px;
+            padding: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <div>
+            <select id="searchType" class="search-type">
+                <option value="title">По названию</option>
+                <option value="author">По автору</option>
+                <option value="pages">По страницам</option>
+                <option value="year">По году</option>
+                <option value="rating">По рейтингу</option>
+            </select>
+        </div>
+        <div>
+            <input type="text" id="searchInput" placeholder="Введите запрос...">
+        </div>
+    </div>
+
+    <!-- Фильтры диапазона -->
+    <div class="range-filter" id="pagesRange">
+        <div class="range-inputs">
+            <input type="number" id="minPages" min="0" placeholder="Мин. страниц">
+            <span>-</span>
+            <input type="number" id="maxPages" min="0" placeholder="Макс. страниц">
+        </div>
+        <button onclick="loadBooks()">Применить</button>
+    </div>
+
+    <div class="range-filter" id="ratingRange">
+        <div class="range-inputs">
+            <input type="number" id="minRating" min="0" max="5" step="0.1" placeholder="Мин. рейтинг">
+            <span>-</span>
+            <input type="number" id="maxRating" min="0" max="5" step="0.1" placeholder="Макс. рейтинг">
+        </div>
+        <button onclick="loadBooks()">Применить</button>
+    </div>
+
+    <book-list id="bookContainer"></book-list>
+
+    <script>
+        let allBooks = [];
+
+        // Загрузка и парсинг XML
+        fetch('books.xml')
+            .then(response => response.text())
+            .then(data => {
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(data, "application/xml");
+                
+                allBooks = Array.from(xmlDoc.getElementsByTagName('book')).map(book => ({
+                    genre: book.parentNode.getAttribute('type'),
+                    title: book.getElementsByTagName('title')[0].textContent,
+                    author: book.getElementsByTagName('author')[0].textContent,
+                    pages: parseInt(book.getElementsByTagName('pages')[0].textContent),
+                    year: book.getElementsByTagName('year')[0].textContent,
+                    rating: parseFloat(book.getElementsByTagName('rating')[0].textContent),
+                    stars: book.getElementsByTagName('rating')[0].getAttribute('data-stars')
+                }));
+
+                loadBooks();
+            });
+
+        function handleSearchTypeChange() {
+            const type = document.getElementById('searchType').value;
+            const searchInput = document.getElementById('searchInput');
+            const pagesRange = document.getElementById('pagesRange');
+            const ratingRange = document.getElementById('ratingRange');
+
+            searchInput.style.display = 'block';
+            pagesRange.classList.remove('active');
+            ratingRange.classList.remove('active');
+
+            if (type === 'pages') {
+                searchInput.style.display = 'none';
+                pagesRange.classList.add('active');
+            } else if (type === 'rating') {
+                searchInput.style.display = 'none';
+                ratingRange.classList.add('active');
+            }
+        }
+
+        function loadBooks() {
+            const searchType = document.getElementById('searchType').value;
+            const searchQuery = document.getElementById('searchInput').value.trim();
+            const minPages = parseInt(document.getElementById('minPages').value) || 0;
+            const maxPages = parseInt(document.getElementById('maxPages').value) || Infinity;
+            const minRating = parseFloat(document.getElementById('minRating').value) || 0;
+            const maxRating = parseFloat(document.getElementById('maxRating').value) || 5;
+
+            let filteredBooks = allBooks.filter(book => {
+                // Фильтр по страницам
+                if (searchType === 'pages') {
+                    return book.pages >= minPages && book.pages <= maxPages;
+                }
+                
+                // Фильтр по рейтингу
+                if (searchType === 'rating') {
+                    return book.rating >= minRating && book.rating <= maxRating;
+                }
+
+                // Остальные фильтры
+                if (!searchQuery) return true;
+                
+                switch(searchType) {
+                    case 'title':
+                        return book.title.toLowerCase().includes(searchQuery.toLowerCase());
+                    case 'author':
+                        return book.author.toLowerCase().includes(searchQuery.toLowerCase());
+                    case 'year':
+                        return book.year.includes(searchQuery);
+                    default:
+                        return true;
+                }
+            });
+
+            renderBooks(filteredBooks);
+        }
+
+        function renderBooks(books) {
+            const container = document.getElementById('bookContainer');
+            container.innerHTML = '';
+
+            const grouped = books.reduce((acc, book) => {
+                if (!acc[book.genre]) acc[book.genre] = [];
+                acc[book.genre].push(book);
+                return acc;
+            }, {});
+
+            for (const [genre, books] of Object.entries(grouped)) {
+                const genreElement = document.createElement('genre');
+                genreElement.setAttribute('type', genre);
+                
+                books.forEach(book => {
+                    const bookElement = document.createElement('book');
+                    bookElement.innerHTML = `
+                        <title>${book.title}</title>
+                        <author>${book.author}</author>
+                        <pages>${book.pages}</pages>
+                        <year>${book.year}</year>
+                        <rating data-stars="${book.stars}">${book.rating.toFixed(1)}</rating>
+                    `;
+                    genreElement.appendChild(bookElement);
+                });
+                
+                container.appendChild(genreElement);
+            }
+        }
+
+        // Обработчики событий
+        document.getElementById('searchType').addEventListener('change', () => {
+            handleSearchTypeChange();
+            loadBooks();
+        });
+        document.getElementById('searchInput').addEventListener('input', loadBooks);
+        document.getElementById('minPages').addEventListener('change', loadBooks);
+        document.getElementById('maxPages').addEventListener('change', loadBooks);
+        document.getElementById('minRating').addEventListener('change', loadBooks);
+        document.getElementById('maxRating').addEventListener('change', loadBooks);
+    </script>
+</body>
+</html>
