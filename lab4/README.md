@@ -77,28 +77,7 @@ button:hover {
 | Комментирование          | wall.createComment            | ✔️      |
 | Система лайков           | likes.add                     | ✔️      |
 
-## 🚀 Дополнительные возможности
-1. **Динамическое окно авторизации**
- ```javascript
- function authVK() {
-   window.open(
-     `https://oauth.vk.com/authorize?client_id=${APP_ID}&display=page&redirect_uri=${encodeURIComponent("https://oauth.vk.com/blank.html")}&scope=wall&response_type=token&v=5.199`,
-     'VK Auth', 
-     'width=600,height=700'
-   );
- }
- ```
 
-2. **Универсальный обработчик API**
- ```javascript
- function handleResponse(response, successMsg) {
-   if(response.response) {
-     alert(successMsg);
-   } else {
-     alert('Ошибка: ' + (response.error?.error_msg || 'Неизвестная ошибка'));
-   }
- }
- ```
 
 ## 📈 Статистика безопасности
 ```vega-lite
